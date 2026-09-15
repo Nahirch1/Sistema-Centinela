@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Time.Testing;
 
+using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Application.Features.Telemetry.Commands.IngestSecurityEvent;
 using SentinelCase.Domain.Entities;
 using SentinelCase.Domain.Enums;
@@ -27,6 +28,9 @@ public sealed class IngestSecurityEventCommandHandlerTests
         var timeProvider = new FakeTimeProvider(receivedAt);
         var assetRepository = new FakeMonitoredAssetRepository();
         var eventRepository = new FakeSecurityEventRepository();
+        var incidentRepository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var detectionRules = Array.Empty<IIncidentDetectionRule>();
 
         var asset = MonitoredAsset.Create(
             "web-server-01",
@@ -38,6 +42,9 @@ public sealed class IngestSecurityEventCommandHandlerTests
         var handler = new IngestSecurityEventCommandHandler(
             assetRepository,
             eventRepository,
+            incidentRepository,
+            historyRepository,
+            detectionRules,
             timeProvider);
 
         var command = new IngestSecurityEventCommand(
@@ -71,10 +78,16 @@ public sealed class IngestSecurityEventCommandHandlerTests
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var assetRepository = new FakeMonitoredAssetRepository();
         var eventRepository = new FakeSecurityEventRepository();
+        var incidentRepository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var detectionRules = Array.Empty<IIncidentDetectionRule>();
 
         var handler = new IngestSecurityEventCommandHandler(
             assetRepository,
             eventRepository,
+            incidentRepository,
+            historyRepository,
+            detectionRules,
             timeProvider);
 
         var command = new IngestSecurityEventCommand(
@@ -100,6 +113,9 @@ public sealed class IngestSecurityEventCommandHandlerTests
         var timeProvider = new FakeTimeProvider(DateTimeOffset.UtcNow);
         var assetRepository = new FakeMonitoredAssetRepository();
         var eventRepository = new FakeSecurityEventRepository();
+        var incidentRepository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var detectionRules = Array.Empty<IIncidentDetectionRule>();
 
         var asset = MonitoredAsset.Create(
             "web-server-01",
@@ -113,6 +129,9 @@ public sealed class IngestSecurityEventCommandHandlerTests
         var handler = new IngestSecurityEventCommandHandler(
             assetRepository,
             eventRepository,
+            incidentRepository,
+            historyRepository,
+            detectionRules,
             timeProvider);
 
         var command = new IngestSecurityEventCommand(
@@ -130,5 +149,65 @@ public sealed class IngestSecurityEventCommandHandlerTests
             exception.Message);
 
         Assert.Empty(eventRepository.Events);
+    }
+
+    [Fact]
+    public async Task Handle_WithFiveFailedLoginsInWindow_ShouldCreateIncidentAutomatically()
+    {
+        var baseTime = new DateTimeOffset(
+            2026,
+            9,
+            15,
+            12,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        var timeProvider = new FakeTimeProvider(baseTime);
+        var assetRepository = new FakeMonitoredAssetRepository();
+        var eventRepository = new FakeSecurityEventRepository();
+        var incidentRepository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+
+        var asset = MonitoredAsset.Create(
+            "web-server-01",
+            "hashed-api-key-value",
+            baseTime);
+
+        await assetRepository.AddAsync(asset);
+
+        var rule = new SentinelCase.Application.Features.Telemetry
+            .DetectionRules.RepeatedFailedLoginDetectionRule(
+                eventRepository);
+
+        var handler = new IngestSecurityEventCommandHandler(
+            assetRepository,
+            eventRepository,
+            incidentRepository,
+            historyRepository,
+            [rule],
+            timeProvider);
+
+        for (var i = 0; i < 5; i++)
+        {
+            timeProvider.SetUtcNow(baseTime.AddSeconds(i + 1));
+
+            var command = new IngestSecurityEventCommand(
+                asset.Id,
+                SecurityEventType.FailedLoginAttempt,
+                "198.51.100.23",
+                "Failed login for user 'admin'.",
+                baseTime.AddSeconds(i));
+
+            await handler.Handle(command, CancellationToken.None);
+        }
+
+        var incident = Assert.Single(incidentRepository.Incidents);
+
+        Assert.Contains("Repeated failed login attempts", incident.Title);
+
+        var historyEntry = Assert.Single(historyRepository.Entries);
+
+        Assert.Equal("detection-engine", historyEntry.PerformedBy);
     }
 }

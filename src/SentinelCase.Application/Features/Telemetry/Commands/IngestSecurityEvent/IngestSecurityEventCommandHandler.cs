@@ -2,6 +2,7 @@ using MediatR;
 
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Domain.Entities;
+using SentinelCase.Domain.Enums;
 using SentinelCase.Domain.Exceptions;
 
 namespace SentinelCase.Application.Features.Telemetry.Commands.IngestSecurityEvent;
@@ -11,15 +12,24 @@ public sealed class IngestSecurityEventCommandHandler
 {
     private readonly IMonitoredAssetRepository _assetRepository;
     private readonly ISecurityEventRepository _eventRepository;
+    private readonly ISecurityIncidentRepository _incidentRepository;
+    private readonly IIncidentHistoryRepository _historyRepository;
+    private readonly IEnumerable<IIncidentDetectionRule> _detectionRules;
     private readonly TimeProvider _timeProvider;
 
     public IngestSecurityEventCommandHandler(
         IMonitoredAssetRepository assetRepository,
         ISecurityEventRepository eventRepository,
+        ISecurityIncidentRepository incidentRepository,
+        IIncidentHistoryRepository historyRepository,
+        IEnumerable<IIncidentDetectionRule> detectionRules,
         TimeProvider timeProvider)
     {
         _assetRepository = assetRepository;
         _eventRepository = eventRepository;
+        _incidentRepository = incidentRepository;
+        _historyRepository = historyRepository;
+        _detectionRules = detectionRules;
         _timeProvider = timeProvider;
     }
 
@@ -39,9 +49,6 @@ public sealed class IngestSecurityEventCommandHandler
 
         var receivedAt = _timeProvider.GetUtcNow();
 
-        // Validate the asset can report telemetry BEFORE creating or
-        // persisting anything - a revoked asset must not have a
-        // SecurityEvent left behind by a rejected request.
         asset.RecordHeartbeat(receivedAt);
 
         var securityEvent = SecurityEvent.Create(
@@ -60,8 +67,65 @@ public sealed class IngestSecurityEventCommandHandler
             asset,
             cancellationToken);
 
+        await EvaluateDetectionRulesAsync(
+            securityEvent,
+            receivedAt,
+            cancellationToken);
+
         return new IngestSecurityEventResult(
             securityEvent.Id,
             securityEvent.ReceivedAt);
+    }
+
+    private async Task EvaluateDetectionRulesAsync(
+        SecurityEvent securityEvent,
+        DateTimeOffset receivedAt,
+        CancellationToken cancellationToken)
+    {
+        foreach (var rule in _detectionRules)
+        {
+            var detected = await rule.EvaluateAsync(
+                securityEvent,
+                cancellationToken);
+
+            if (detected is null)
+            {
+                continue;
+            }
+
+            var alreadyExists =
+                await _incidentRepository.ExistsWithTitleAsync(
+                    detected.Title,
+                    cancellationToken);
+
+            if (alreadyExists)
+            {
+                continue;
+            }
+
+            var incident = SecurityIncident.Create(
+                detected.Title,
+                detected.Description,
+                detected.Severity,
+                securityEvent.OccurredAt,
+                receivedAt);
+
+            await _incidentRepository.AddAsync(
+                incident,
+                cancellationToken);
+
+            var historyEntry = IncidentHistoryEntry.Create(
+                incident.Id,
+                IncidentHistoryEventType.Created,
+                "The incident was created automatically by the detection engine.",
+                previousValue: null,
+                newValue: incident.Status.ToString(),
+                performedBy: "detection-engine",
+                receivedAt);
+
+            await _historyRepository.AddAsync(
+                historyEntry,
+                cancellationToken);
+        }
     }
 }

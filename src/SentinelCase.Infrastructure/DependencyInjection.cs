@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelCase.Application.Common.Interfaces;
+using SentinelCase.Application.Features.Telemetry.DetectionRules;
 using SentinelCase.Infrastructure.Identity;
 using SentinelCase.Infrastructure.Identity.Tokens;
 using SentinelCase.Infrastructure.Messaging.Outbox;
@@ -63,6 +64,10 @@ public static class DependencyInjection
         services.AddScoped<
             ISecurityEventRepository,
             SecurityEventRepository>();
+
+        services.AddScoped<
+            IIncidentDetectionRule,
+            RepeatedFailedLoginDetectionRule>();
 
         services.AddScoped<JwtTokenService>();
 
