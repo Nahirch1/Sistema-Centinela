@@ -5,7 +5,7 @@ using SentinelCase.Domain.Exceptions;
 
 namespace SentinelCase.Domain.Entities;
 
-public sealed class SecurityIncident
+public sealed class SecurityIncident : IHasDomainEvents
 {
     private readonly List<IDomainEvent> _domainEvents = [];
 

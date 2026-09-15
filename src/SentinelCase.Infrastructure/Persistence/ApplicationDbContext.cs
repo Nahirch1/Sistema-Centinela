@@ -38,6 +38,12 @@ public sealed class ApplicationDbContext
     public DbSet<OutboxMessage> OutboxMessages =>
         Set<OutboxMessage>();
 
+    public DbSet<MonitoredAsset> MonitoredAssets =>
+        Set<MonitoredAsset>();
+
+    public DbSet<SecurityEvent> SecurityEvents =>
+        Set<SecurityEvent>();
+
     public override Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -50,7 +56,7 @@ public sealed class ApplicationDbContext
     private void AddDomainEventsToOutbox()
     {
         var entities = ChangeTracker
-            .Entries<SecurityIncident>()
+            .Entries<IHasDomainEvents>()
             .Select(entry => entry.Entity)
             .Where(entity => entity.DomainEvents.Count > 0)
             .ToArray();

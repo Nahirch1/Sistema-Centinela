@@ -56,6 +56,14 @@ public static class DependencyInjection
             IIncidentNoteRepository,
             IncidentNoteRepository>();
 
+        services.AddScoped<
+            IMonitoredAssetRepository,
+            MonitoredAssetRepository>();
+
+        services.AddScoped<
+            ISecurityEventRepository,
+            SecurityEventRepository>();
+
         services.AddScoped<JwtTokenService>();
 
         services.AddSingleton<SentinelCaseMetrics>();
