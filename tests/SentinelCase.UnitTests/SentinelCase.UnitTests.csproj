@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SentinelCase.Domain\SentinelCase.Domain.csproj" />
     <ProjectReference Include="..\..\src\SentinelCase.Application\SentinelCase.Application.csproj" />
+    <ProjectReference Include="..\..\src\SentinelCase.AI\SentinelCase.AI.csproj" />
   </ItemGroup>
 
 </Project>
