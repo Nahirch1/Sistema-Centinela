@@ -39,6 +39,11 @@ public sealed class IngestSecurityEventCommandHandler
 
         var receivedAt = _timeProvider.GetUtcNow();
 
+        // Validate the asset can report telemetry BEFORE creating or
+        // persisting anything - a revoked asset must not have a
+        // SecurityEvent left behind by a rejected request.
+        asset.RecordHeartbeat(receivedAt);
+
         var securityEvent = SecurityEvent.Create(
             request.MonitoredAssetId,
             request.EventType,
@@ -50,8 +55,6 @@ public sealed class IngestSecurityEventCommandHandler
         await _eventRepository.AddAsync(
             securityEvent,
             cancellationToken);
-
-        asset.RecordHeartbeat(receivedAt);
 
         await _assetRepository.UpdateAsync(
             asset,
