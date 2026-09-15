@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
+using SentinelCase.Api.Common.Authentication;
 using SentinelCase.Api.Common.Authorization;
 using SentinelCase.Api.Common.ExceptionHandling;
 using SentinelCase.Api.Common.Identity;
@@ -151,7 +152,10 @@ builder.Services
                         Encoding.UTF8.GetBytes(jwtSigningKey)),
                 ClockSkew = TimeSpan.FromSeconds(30)
             };
-    });
+    })
+    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationOptions.SchemeName,
+        _ => { });
 
 builder.Services
     .AddAuthorizationBuilder()
@@ -170,7 +174,13 @@ builder.Services
         AppPolicies.CanAssignIncident,
         policy => policy.RequireRole(
             AppRoles.SocManager,
-            AppRoles.Administrator));
+            AppRoles.Administrator))
+    .AddPolicy(
+        AppPolicies.RequireAssetApiKey,
+        policy => policy
+            .AddAuthenticationSchemes(
+                ApiKeyAuthenticationOptions.SchemeName)
+            .RequireAuthenticatedUser());
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
@@ -275,6 +285,8 @@ app.MapHealthChecks(
 app.MapControllers();
 app.MapIncidentEndpoints();
 app.MapAuthEndpoints();
+app.MapAssetEndpoints();
+app.MapTelemetryEndpoints();
 
 app.Run();
 
