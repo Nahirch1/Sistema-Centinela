@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getApiToken } from '../auth/token'
+import { useAuth } from '../auth/AuthContext'
 
 import {
   getIncidents,
@@ -31,9 +31,10 @@ export function DashboardPage({
   const [error, setError] =
     useState<string | null>(null)
 
+  const { session } = useAuth()
+
   useEffect(() => {
-    const token =
-      getApiToken()
+    const token = session?.accessToken
 
     Promise.all([
       getIncidents(
@@ -60,7 +61,7 @@ export function DashboardPage({
       .finally(() => {
         setLoading(false)
       })
-  }, [])
+  }, [session])
 
   return (
     <>

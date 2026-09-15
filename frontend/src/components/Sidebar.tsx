@@ -1,4 +1,4 @@
-import { ApiAccess } from './ApiAccess'
+import { useAuth } from '../auth/AuthContext'
 
 export type AppPage =
   | 'dashboard'
@@ -14,6 +14,8 @@ export function Sidebar({
   activePage,
   onNavigate,
 }: SidebarProps) {
+  const { session, logout } = useAuth()
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -58,7 +60,20 @@ export function Sidebar({
         </button>
       </nav>
 
-      <ApiAccess />
+      <div className="session-box">
+        <div className="session-info">
+          <strong>{session?.displayName}</strong>
+          <span>{session?.email}</span>
+        </div>
+
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={logout}
+        >
+          Cerrar sesión
+        </button>
+      </div>
     </aside>
   )
 }

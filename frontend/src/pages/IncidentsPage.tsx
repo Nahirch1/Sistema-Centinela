@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getApiToken } from '../auth/token'
+import { useAuth } from '../auth/AuthContext'
 
 import { getIncidents } from '../api/incidents'
 import { IncidentRow } from '../components/IncidentRow'
@@ -22,6 +22,8 @@ interface IncidentsPageProps {
 export function IncidentsPage({
   onOpenIncident,
 }: IncidentsPageProps) {
+  const { session } = useAuth()
+
   const [incidents, setIncidents] =
     useState<IncidentListItem[]>([])
 
@@ -50,8 +52,7 @@ export function IncidentsPage({
     useState<string | null>(null)
 
   useEffect(() => {
-    const token =
-      getApiToken()
+    const token = session?.accessToken
 
     setLoading(true)
 
@@ -90,6 +91,7 @@ export function IncidentsPage({
         setLoading(false)
       })
   }, [
+    session,
     pageNumber,
     searchTerm,
     severity,

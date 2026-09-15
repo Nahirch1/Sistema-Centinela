@@ -10,13 +10,21 @@ import { DashboardPage } from './pages/DashboardPage'
 import { IncidentDetailPage } from './pages/IncidentDetailPage'
 import { NewIncidentPage } from './pages/NewIncidentPage'
 import { IncidentsPage } from './pages/IncidentsPage'
+import { LoginPage } from './pages/LoginPage'
+import { useAuth } from './auth/AuthContext'
 
 function App() {
+  const { session } = useAuth()
+
   const [activePage, setActivePage] =
     useState<AppPage>('dashboard')
 
   const [selectedIncidentId, setSelectedIncidentId] =
     useState<string | null>(null)
+
+  if (!session) {
+    return <LoginPage />
+  }
 
   const pageTitle = selectedIncidentId
     ? 'Detalle del incidente'

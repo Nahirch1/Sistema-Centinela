@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getApiToken } from '../auth/token'
+import { useAuth } from '../auth/AuthContext'
 
 import {
   addIncidentNote,
@@ -76,6 +76,8 @@ export function IncidentDetailPage({
   incidentId,
   onBack,
 }: IncidentDetailPageProps) {
+  const { session } = useAuth()
+
   const [incident, setIncident] =
     useState<IncidentDetail | null>(null)
 
@@ -116,7 +118,7 @@ export function IncidentDetailPage({
     useState<string | null>(null)
 
   useEffect(() => {
-    const token = getApiToken()
+    const token = session?.accessToken
 
     setLoading(true)
 
@@ -145,10 +147,10 @@ export function IncidentDetailPage({
       .finally(() => {
         setLoading(false)
       })
-  }, [incidentId])
+  }, [incidentId, session])
 
   async function refreshIncident() {
-    const token = getApiToken()
+    const token = session?.accessToken
 
     const [
       incidentResult,
@@ -176,7 +178,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = getApiToken()
+      const token = session?.accessToken
 
       await updateIncident(
         incidentId,
@@ -209,7 +211,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = getApiToken()
+      const token = session?.accessToken
 
       await assignIncident(
         incidentId,
@@ -244,7 +246,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = getApiToken()
+      const token = session?.accessToken
 
       await changeIncidentStatus(
         incidentId,
@@ -274,7 +276,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = getApiToken()
+      const token = session?.accessToken
 
       await addIncidentNote(
         incidentId,

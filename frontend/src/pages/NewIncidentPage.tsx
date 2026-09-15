@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getApiToken } from '../auth/token'
+import { useAuth } from '../auth/AuthContext'
 
 import { createIncident } from '../api/incidents'
 import { IncidentSeverity } from '../types/incidents'
@@ -11,6 +11,8 @@ interface NewIncidentPageProps {
 export function NewIncidentPage({
   onCreated,
 }: NewIncidentPageProps) {
+  const { session } = useAuth()
+
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [severity, setSeverity] = useState(
@@ -39,7 +41,7 @@ export function NewIncidentPage({
       setSaving(true)
       setError(null)
 
-      const token = getApiToken()
+      const token = session?.accessToken
 
       const result = await createIncident(
         {
