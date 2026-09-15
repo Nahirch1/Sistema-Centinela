@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SentinelCase.Agent/SentinelCase.Agent.csproj" />
     <Project Path="src/SentinelCase.AI/SentinelCase.AI.csproj" />
     <Project Path="src/SentinelCase.Api/SentinelCase.Api.csproj" />
     <Project Path="src/SentinelCase.Application/SentinelCase.Application.csproj" />
