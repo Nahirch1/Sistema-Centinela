@@ -7,6 +7,7 @@ using SentinelCase.Application.Features.Incidents.Commands.AssignIncident;
 using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
 using SentinelCase.Application.Features.Incidents.Commands.UpdateIncident;
+using SentinelCase.Application.Features.Incidents.Queries.AnalyzeIncidentWithAi;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentHistory;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentNotes;
@@ -103,6 +104,13 @@ public static class IncidentEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
             .ProducesValidationProblem();
+
+        group.MapPost("/{id:guid}/ai/analyze", AnalyzeIncidentWithAiAsync)
+            .WithName("AnalyzeIncidentWithAi")
+            .RequireAuthorization()
+            .Produces<AnalyzeIncidentWithAiResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
 
         return endpoints;
     }
@@ -271,6 +279,22 @@ public static class IncidentEndpoints
 
         var result = await sender.Send(
             command,
+            cancellationToken);
+
+        return result is null
+            ? Results.NotFound()
+            : Results.Ok(result);
+    }
+
+    private static async Task<IResult> AnalyzeIncidentWithAiAsync(
+        Guid id,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var query = new AnalyzeIncidentWithAiQuery(id);
+
+        var result = await sender.Send(
+            query,
             cancellationToken);
 
         return result is null

@@ -27,6 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\SentinelCase.Application\SentinelCase.Application.csproj" />
     <ProjectReference Include="..\SentinelCase.Infrastructure\SentinelCase.Infrastructure.csproj" />
+    <ProjectReference Include="..\SentinelCase.AI\SentinelCase.AI.csproj" />
   </ItemGroup>
 
 </Project>

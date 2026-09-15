@@ -14,6 +14,7 @@ using SentinelCase.Api.Common.ExceptionHandling;
 using SentinelCase.Api.Common.Identity;
 using SentinelCase.Api.Endpoints;
 using SentinelCase.Api.Endpoints.Auth;
+using SentinelCase.AI;
 using SentinelCase.Application;
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Infrastructure;
@@ -37,6 +38,7 @@ builder.Services.AddSerilog((services, configuration) =>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddAI(builder.Configuration);
 
 builder.Services.AddResponseCompression(options =>
 {

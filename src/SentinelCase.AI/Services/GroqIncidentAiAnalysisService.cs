@@ -1,9 +1,9 @@
-using System.Text;
-
-using Anthropic;
-using Anthropic.Models.Messages;
+using System.ClientModel;
 
 using Microsoft.Extensions.Logging;
+
+using OpenAI;
+using OpenAI.Chat;
 
 using SentinelCase.AI.Parsing;
 using SentinelCase.AI.Prompts.IncidentAnalysis;
@@ -12,18 +12,18 @@ using SentinelCase.Application.Common.Models;
 
 namespace SentinelCase.AI.Services;
 
-public sealed class AnthropicIncidentAiAnalysisService : IIncidentAiAnalysisService
+public sealed class GroqIncidentAiAnalysisService : IIncidentAiAnalysisService
 {
-    private readonly AnthropicClient _client;
-    private readonly ILogger<AnthropicIncidentAiAnalysisService> _logger;
+    private readonly ChatClient _chatClient;
+    private readonly ILogger<GroqIncidentAiAnalysisService> _logger;
     private readonly string _modelId;
 
-    public AnthropicIncidentAiAnalysisService(
-        AnthropicClient client,
-        ILogger<AnthropicIncidentAiAnalysisService> logger,
+    public GroqIncidentAiAnalysisService(
+        ChatClient chatClient,
+        ILogger<GroqIncidentAiAnalysisService> logger,
         string modelId)
     {
-        _client = client;
+        _chatClient = chatClient;
         _logger = logger;
         _modelId = modelId;
     }
@@ -32,32 +32,30 @@ public sealed class AnthropicIncidentAiAnalysisService : IIncidentAiAnalysisServ
         IncidentAiAnalysisInput input,
         CancellationToken cancellationToken)
     {
-        var userPrompt = BuildUserPrompt(input);
+        List<ChatMessage> messages =
+        [
+            new SystemChatMessage(IncidentAnalysisPromptV1.SystemPrompt),
+            new UserChatMessage(BuildUserPrompt(input)),
+        ];
 
-        var parameters = new MessageCreateParams
+        var options = new ChatCompletionOptions
         {
-            MaxTokens = 1024,
-            Model = new Model(_modelId), // RIESGO: constructor de Model
-            System = IncidentAnalysisPromptV1.SystemPrompt,
-            Messages =
-            [
-                new()
-                {
-                    Role = Role.User,
-                    Content = userPrompt,
-                },
-            ],
+            MaxOutputTokenCount = 1024,
+            Temperature = 0.2f,
         };
 
         var started = DateTimeOffset.UtcNow;
 
-        var message = await _client.Messages.Create(
-            parameters,
-            cancellationToken); // RIESGO: firma exacta de Create
+        ChatCompletion completion = await _chatClient.CompleteChatAsync(
+            messages,
+            options,
+            cancellationToken);
 
         var latency = DateTimeOffset.UtcNow - started;
 
-        var rawText = ExtractText(message);
+        var rawText = completion.Content.Count > 0
+            ? completion.Content[0].Text
+            : string.Empty;
 
         _logger.LogInformation(
             "AI incident analysis completed for {IncidentId} in {LatencyMs}ms using {Model}",
@@ -69,21 +67,6 @@ public sealed class AnthropicIncidentAiAnalysisService : IIncidentAiAnalysisServ
             rawText,
             _modelId,
             IncidentAnalysisPromptV1.Version);
-    }
-
-    private static string ExtractText(Message message)
-    {
-        var builder = new StringBuilder();
-
-        foreach (var block in message.Content)
-        {
-            if (block.TryPickText(out var textBlock))
-            {
-                builder.Append(textBlock.Text);
-            }
-        }
-
-        return builder.ToString();
     }
 
     private static string BuildUserPrompt(IncidentAiAnalysisInput input)
